@@ -1,0 +1,6 @@
+@FunkoApiMongo_HostAddress = http://localhost:5266
+
+GET {{FunkoApiMongo_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
