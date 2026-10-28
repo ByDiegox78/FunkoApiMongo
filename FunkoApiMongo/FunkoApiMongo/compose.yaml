@@ -9,6 +9,13 @@
       - mongo_data:/data/db # Persistencia de datos
     networks:
       - funko_net
+  redis:
+    image: redis:latest
+    container_name: funko_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - funko_net
 
   # Tu API en .NET
   funko_api:
@@ -19,7 +26,7 @@
     ports:
       - "8081:8080"
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_ENVIRONMENT=Production
       - ConnectionStrings__MongoDb=mongodb://mongo_db:27017
     depends_on:
       - mongo_db

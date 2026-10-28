@@ -1,3 +1,4 @@
+using FunkoApiMongo.Cache;
 using FunkoApiMongo.Config;
 using FunkoApiMongo.Converter;
 using FunkoApiMongo.Infrastructure;
@@ -22,7 +23,8 @@ var config = new FunkoConfig {
         ?? throw new InvalidOperationException("Falta ConnectionStrings:MongoDb"),
     DatabaseName = builder.Configuration["DatabaseSettings:Name"]
         ?? throw new InvalidOperationException("Falta DatabaseSettings:Name"),
-    Name = builder.Configuration["ApiSettings:Name"] ?? "Funko API MongoDB"
+    Name = builder.Configuration["ApiSettings:Name"] ?? "Funko API MongoDB",
+    Cache = builder.Configuration["Cache:Name"] ?? "Funko API Cache"
 };
 
 var repositoryType = builder.Configuration["Funkos:RepositoryType"] ?? "MongoNative";
@@ -42,6 +44,19 @@ builder.Services.AddDbContext<AppDbContext>(options => {
 builder.Services.AddSingleton<IMongoClient>(new MongoClient(config.ConnectionString));
 builder.Services.AddScoped(sp => sp.GetRequiredService<IMongoClient>().GetDatabase(config.DatabaseName));
 builder.Services.AddScoped(sp => sp.GetRequiredService<IMongoDatabase>().GetCollection<Funko>("funkos"));
+
+builder.Services.Configure<CacheConfig>(
+    builder.Configuration.GetSection(CacheConfig.CacheName));
+
+if (builder.Environment.IsDevelopment()) {
+    builder.Services.AddMemoryCache();
+    builder.Services.AddSingleton<ICacheService, MemCacheService>();
+} else {
+    builder.Services.AddStackExchangeRedisCache(options => {
+        options.Configuration = builder.Configuration.GetConnectionString("Redis"); 
+    });
+    builder.Services.AddSingleton<ICacheService, RedisService>();
+}
 
 // 5. Scrutor
 builder.Services.AddDependencies();
@@ -69,13 +84,16 @@ app.Logger.LogInformation("""
      Mongo          : {Mongo}
      Base de datos  : {Database}
      Repositorio    : {Repositorio}
+     Cache          : {Cache}
     ============================================================
     """,
     config.Name,
     app.Environment.EnvironmentName,
     config.ConnectionString,
     config.DatabaseName,
-    repositoryType);
+    repositoryType,
+    config.Cache
+    );
 
 if (app.Environment.IsDevelopment())
 {
